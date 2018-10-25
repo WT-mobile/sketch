@@ -235,19 +235,38 @@ public class ImageSizeCalculator {
         } else {
             // 首先限制像素数不能超过目标宽高的像素数
             final long maxPixels = targetWidth * targetHeight;
-            while ((SketchUtils.ceil(outWidth, inSampleSize)) * (SketchUtils.ceil(outHeight, inSampleSize)) > maxPixels) {
-                inSampleSize *= 2;
+//            while ((SketchUtils.ceil(outWidth, inSampleSize)) * (SketchUtils.ceil(outHeight, inSampleSize)) > maxPixels) {
+//                inSampleSize *= 2;
+//            }
+//
+//            // 然后限制宽高不能大于OpenGL所允许的最大尺寸
+//            while (SketchUtils.ceil(outWidth, inSampleSize) > maxSize || SketchUtils.ceil(outHeight, inSampleSize) > maxSize) {
+//                inSampleSize *= 2;
+//            }
+
+            if (outHeight > targetHeight || outWidth > targetWidth) {
+
+                // Calculate ratios of height and width to requested height and width
+                final int heightRatio = Math.round((float) outHeight / (float) targetHeight);
+                final int widthRatio = Math.round((float) outWidth / (float) targetWidth);
+
+                // Choose the smallest ratio as inSampleSize value, this will guarantee
+                // a final image with both dimensions larger than or equal to the
+                // requested height and width.
+                inSampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
             }
 
-            // 然后限制宽高不能大于OpenGL所允许的最大尺寸
-            while (SketchUtils.ceil(outWidth, inSampleSize) > maxSize || SketchUtils.ceil(outHeight, inSampleSize) > maxSize) {
-                inSampleSize *= 2;
+            // We want the actual sample size that will be used, so round down to nearest power of 2.
+            int power = 1;
+            while (power * 2 < inSampleSize) {
+                power = power * 2;
             }
+// 想要较小的缩略图就将 2 改为 4
+            if (smallerThumbnails && power == 2) {
+                return   4;
+            }
+            return power;
 
-            // 想要较小的缩略图就将 2 改为 4
-            if (smallerThumbnails && inSampleSize == 2) {
-                inSampleSize = 4;
-            }
         }
 
         return inSampleSize;
