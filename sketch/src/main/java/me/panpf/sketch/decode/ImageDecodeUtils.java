@@ -24,6 +24,7 @@ import android.graphics.Rect;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,15 +46,63 @@ public class ImageDecodeUtils {
     public static Bitmap decodeBitmap(DataSource dataSource, BitmapFactory.Options options) throws IOException {
         InputStream inputStream = null;
         Bitmap bitmap = null;
-
         try {
             inputStream = dataSource.getInputStream();
-            bitmap = BitmapFactory.decodeStream(inputStream, null, options);
+            options.inJustDecodeBounds = true;
+            byte[] bytes = readStream(inputStream);
+            int length = bytes.length;
+            bitmap = BitmapFactory.decodeByteArray(bytes,0, bytes.length, options);
+
+            int height = options.outHeight;
+            int width = options.outWidth;
+            options.inSampleSize = 1;
+            if (width > 3000 && height > 2000) {
+                if (width > height) {
+                    if (width < height * 3) {
+                        options.inSampleSize = 2;
+                    }
+                } else {
+                    if (height < width * 3) {
+                        options.inSampleSize = 2;
+                    }
+                }
+            }
+            options.inJustDecodeBounds = false;
+            bitmap = BitmapFactory.decodeByteArray(bytes,0, bytes.length, options);
         } finally {
             SketchUtils.close(inputStream);
         }
 
         return bitmap;
+    }
+
+    public static byte[] readStream(InputStream inStream)  {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        byte[] data;
+        try {
+            byte[] buffer = new byte[1024];
+            int len = -1;
+
+            while ((len = inStream.read(buffer)) != -1) {
+                outStream.write(buffer, 0, len);
+            }
+            data = outStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            try {
+                outStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                inStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return data;
     }
 
     @SuppressLint("ObsoleteSdkInt")
